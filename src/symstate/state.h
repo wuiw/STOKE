@@ -21,6 +21,7 @@
 #include "src/ext/x64asm/include/x64asm.h"
 #include "src/state/cpu_state.h"
 #include "src/symstate/memory.h"
+#include "src/symstate/memory/no_def_in_live_out.h"
 #include "src/symstate/regs.h"
 
 namespace stoke {
@@ -44,8 +45,8 @@ public:
   SymRegs gp;
   /** Symbolic SSE registers */
   SymRegs sse;
-  /** Memory */
-  SymMemory memory;
+  /** Memore */
+  NoDefInLiveOutMemory memory;
   /** Symbolic rflags: CF, PF, AF, ZF, SF, OF */
   std::array<SymBool, 6> rf;
   /** Has a #NP, #SS or #AC exception occurred? (These trigger SIGBUG on linux)*/

@@ -117,7 +117,7 @@ public:
    * This would be private were it not for the need to be accessible from
    * testing classes (where friendship doesn't work properly).*/
   static CpuState state_from_model(SMTSolver& smt, const std::string& name_suffix,
-                                   const SymMemory* memory = NULL, const SymMemory* memory2 = NULL);
+                                   SymMemory* memory = NULL, SymMemory* memory2 = NULL);
 
 private:
 

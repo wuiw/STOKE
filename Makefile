@@ -88,9 +88,10 @@ SRC_OBJ=\
 	src/symstate/bitvector.o \
 	src/symstate/bool.o \
 	src/symstate/function.o \
-	src/symstate/memory.o \
 	src/symstate/memory_manager.o \
 	src/symstate/state.o \
+	\
+	src/symstate/memory/no_def_in_live_out.o \
 	\
 	src/target/cpu_info.o	\
 	\
@@ -110,6 +111,8 @@ SRC_OBJ=\
 	src/validator/handlers/simple_handler.o \
 	\
 	src/verifier/verifier.o
+
+
 
 TOOL_ARGS_OBJ=\
 	tools/args/benchmark.o \
@@ -275,6 +278,8 @@ src/state/%.o: src/state/%.cc src/state/%.h
 src/stategen/%.o: src/stategen/%.cc src/stategen/%.h
 	$(CXX) $(TARGET) $(OPT) $(INC) -c $< -o $@
 src/symstate/%.o: src/symstate/%.cc src/symstate/%.h
+	$(CXX) $(TARGET) $(OPT) $(INC) -c $< -o $@
+src/symstate/memory/%.o: src/symstate/memory/%.cc src/symstate/memory/%.h
 	$(CXX) $(TARGET) $(OPT) $(INC) -c $< -o $@
 src/target/%.o: src/target/%.cc src/target/%.h
 	$(CXX) $(TARGET) $(OPT) $(INC) -c $< -o $@

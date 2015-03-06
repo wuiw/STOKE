@@ -244,7 +244,7 @@ bool compute_split(vector<pair<uint64_t, uint16_t>> addresses, size_t pos,
 }
 
 CpuState Validator::state_from_model(SMTSolver& smt, const string& name_suffix,
-                                     const SymMemory* memory, const SymMemory* memory2) {
+                                     SymMemory* memory, SymMemory* memory2) {
 
   CpuState cs;
 

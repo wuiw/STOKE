@@ -17,6 +17,8 @@
 #define _STOKE_SRC_SYMSTATE_SYM_MEMORY_H
 
 #include "src/analysis/alias.h"
+#include "src/ext/x64asm/include/x64asm.h"
+#include "src/sandbox/sandbox.h"
 #include "src/state/memory.h"
 #include "src/symstate/bitvector.h"
 
@@ -28,6 +30,9 @@ class SymMemory {
 
 public:
 
+  SymMemory() : state_(NULL), analysis_(NULL), sandbox_(NULL), code_(NULL) {
+  }
+
   /** Set the parent symbolic state */
   SymMemory& set_parent(SymState* ss) {
     state_ = ss;
@@ -38,46 +43,68 @@ public:
     analysis_ = aa;
     return *this;
   }
+  /** Provide a sandbox for learning invariants.  This sandbox is assumed to have
+      testcases.  An implementation may choose to install a state inspection callback
+      and then run the sandbox. */
+  SymMemory& set_sandbox(Sandbox* sb) {
+    sandbox_ = sb;
+    return *this;
+  }
+  /** Provide a copy of the code we're validating.  Always useful. */
+  SymMemory& set_code(x64asm::Code* code) {
+    code_ = code;
+    return *this;
+  }
 
   /** Updates the memory with a write.
    *  Returns condition for segmentation fault */
-  SymBool write(SymBitVector address, SymBitVector value, uint16_t size, size_t line_no);
+  virtual SymBool write(SymBitVector address, SymBitVector value, uint16_t size, size_t line_no) = 0;
 
   /** Reads from the memory.  Returns value and segv condition. */
-  std::pair<SymBitVector,SymBool> read(SymBitVector address, uint16_t size, size_t line_no);
+  virtual std::pair<SymBitVector,SymBool> read(SymBitVector address, uint16_t size, size_t line_no) = 0;
 
-  /** Set concrete initialization values */
-  void init_concrete(const Memory& stack, const Memory& heap);
+  /** Generate verification conditions to assert equivalence of two SymMemory objects. */
+  virtual std::vector<SymBool> is_equivalent(SymBool& other) {
+    std::vector<SymBool> ret;
+    ret.push_back(SymBool::_false());
+    error_ = true;
+    error_message_ = "Validator's memory settings don't support equivalence checking.";
+    return ret;
+  }
 
   /** Get variables holding all addresses encountered so far.  Good for extracting data from
     * a model. */
-  std::vector<std::pair<std::string, uint16_t>> get_address_vars() const;
-private:
+  virtual std::vector<std::pair<std::string, uint16_t>> get_address_vars() {
+    std::vector<std::pair<std::string, uint16_t>> ret;
+    error_ = true;
+    error_message_ = "Validator's memory settings don't support counterexample generation.";
+    return ret;
+  }
 
-  /** Concrete valid heap locations at start.  Stored big-endian.  Optional.*/
-  SymBitVector heap_;
-  /** Concrete heap starting address */
-  uint64_t heap_start_;
-  /** Concrete heap size */
-  uint64_t heap_size_;
+  /** Has an error been encountered? */
+  bool has_error() const {
+    return error_;
+  }
+  /** Get the error message. */
+  std::string error() const {
+    return error_message_;
+  }
 
-  /** Data structure for saving reads/writes */
-  struct MemoryAccess {
-    SymBitVector address;
-    SymBitVector value;
-    uint16_t size;
-    size_t line_no;
-  };
+protected:
 
-  /** Keep track of all the memory writes */
-  std::vector<MemoryAccess> writes_;
-  /** Keep track of all the memory reads */
-  std::vector<MemoryAccess> reads_;
+  /** Have we encountered an error? */
+  bool error_;
+  /** What was that error? */
+  std::string error_message_;
 
   /** Optional aliasing analysis for simplication */
   AliasAnalysis* analysis_;
-  /** Reference back to symbolic state */
+  /** Optional reference back to symbolic state */
   SymState* state_;
+  /** Optional sandbox for learning invariants */
+  Sandbox* sandbox_;
+  /** Optional copy of the code for reference. */
+  x64asm::Code* code_;
 
 
 };

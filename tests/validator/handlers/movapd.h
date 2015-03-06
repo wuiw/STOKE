@@ -82,7 +82,7 @@ TEST_F(ValidatorMovapdTest, PossiblyUnalignedBad) {
   rewrite_ << "movapd %xmm3, %xmm5" << std::endl;
   rewrite_ << "retq" << std::endl;
 
-  assert_ceg();
+  assert_ceg_nocheck();
 
 }
 
@@ -138,7 +138,7 @@ TEST_F(ValidatorMovapdTest, Align8WithOriginalBad) {
 
   set_live_outs(x64asm::RegSet::empty() + x64asm::xmm5);
 
-  assert_ceg();
+  assert_ceg_nocheck();
 
 }
 
@@ -176,7 +176,7 @@ TEST_F(ValidatorMovapdTest, Aligned16WithOriginalAvx2Bad) {
 
   set_live_outs(x64asm::RegSet::empty() + x64asm::xmm5);
 
-  assert_ceg();
+  assert_ceg_nocheck();
 
 }
 
