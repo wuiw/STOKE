@@ -21,6 +21,7 @@
 
 #include "src/cfg/cfg.h"
 #include "src/ext/x64asm/include/x64asm.h"
+#include "src/sandbox/sandbox.h"
 #include "src/state/cpu_state.h"
 #include "src/solver/smtsolver.h"
 #include "src/symstate/memory_manager.h"
@@ -28,6 +29,7 @@
 #include "src/validator/error.h"
 #include "src/validator/handler.h"
 #include "src/validator/handlers.h"
+#include "src/validator/memory_strategy.h"
 
 
 namespace stoke {
@@ -38,6 +40,7 @@ public:
 
   Validator(SMTSolver& solver) : solver_(solver),
     handler_(*(new ComboHandler())), free_handler_(true) {
+    set_memory_strategy(MemoryStrategy::NO_DEF_IN_LIVE_OUT);
     has_error_ = false;
   }
 
@@ -48,6 +51,21 @@ public:
   ~Validator() {
     if (free_handler_)
       delete &handler_;
+  }
+
+  /** Set strategy for handling memory */
+  Validator& set_memory_strategy(MemoryStrategy ms) {
+    memory_strategy_ = ms;
+    return *this;
+  };
+  /** Set strategy for handling loops */
+  Validator& set_loop_strategy() {
+    return *this;
+  }
+  /** Provide a sandbox (needed for some loop/memory strategies) */
+  Validator& set_sandbox(Sandbox* sb) {
+    sandbox_ = sb;
+    return *this;
   }
 
   /** Evalue if the target and rewrite are the same */
@@ -117,6 +135,11 @@ private:
   }
   /** The memory manager */
   SymMemoryManager memory_manager_;
+
+  /** The technique used for handling memory */
+  MemoryStrategy memory_strategy_;
+  /** Any sandbox we've been given to work with */
+  Sandbox* sandbox_;
 
   /** Take two codes and generate constraints asserting their equivalence.
    * Also return final symbolic states (that have information about memory

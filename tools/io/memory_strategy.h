@@ -12,22 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STOKE_TOOLS_GADGETS_VALIDATOR_H
-#define STOKE_TOOLS_GADGETS_VALIDATOR_H
+#ifndef STOKE_TOOLS_IO_MEMORY_STRATEGY_H
+#define STOKE_TOOLS_IO_MEMORY_STRATEGY_H
 
-#include "src/solver/smtsolver.h"
-#include "src/validator/validator.h"
-#include "tools/args/validator.inc"
+#include <iostream>
+
+#include "src/validator/memory_strategy.h"
 
 namespace stoke {
 
-class ValidatorGadget : public Validator {
-public:
-  ValidatorGadget(SMTSolver& smt) : Validator(smt) {
-    set_memory_strategy(memory_strategy_arg);
-  }
+struct MemoryStrategyReader {
+  void operator()(std::istream& is, MemoryStrategy& s);
+};
+
+struct MemoryStrategyWriter {
+  void operator()(std::ostream& os, const MemoryStrategy s);
 };
 
 } // namespace stoke
 
 #endif
+
+

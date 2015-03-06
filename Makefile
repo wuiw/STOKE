@@ -134,6 +134,7 @@ TOOL_NON_ARG_OBJ=\
 	tools/io/opc_set.o \
 	tools/io/init.o \
 	tools/io/mem_set.o \
+	tools/io/memory_strategy.o \
 	tools/io/move.o \
 	tools/io/reduction.o \
 	tools/io/postprocessing.o \

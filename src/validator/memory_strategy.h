@@ -12,22 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STOKE_TOOLS_GADGETS_VALIDATOR_H
-#define STOKE_TOOLS_GADGETS_VALIDATOR_H
-
-#include "src/solver/smtsolver.h"
-#include "src/validator/validator.h"
-#include "tools/args/validator.inc"
+#ifndef STOKE_SRC_VALIDATOR_MEMORY_STRATEGY_H
+#define STOKE_SRC_VALIDATOR_MEMORY_STRATEGY_H
 
 namespace stoke {
 
-class ValidatorGadget : public Validator {
-public:
-  ValidatorGadget(SMTSolver& smt) : Validator(smt) {
-    set_memory_strategy(memory_strategy_arg);
-  }
+enum class MemoryStrategy {
+  NONE,               // do not attempt to validate memory
+  NO_DEF_IN_LIVE_OUT, // the terrible version I have now
+  TESTCASE_ALIASING   // learn the aliasing constraints from a testcase
 };
 
 } // namespace stoke
 
 #endif
+
