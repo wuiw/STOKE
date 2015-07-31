@@ -38,7 +38,9 @@ CorrectnessCost& CorrectnessCost::set_target(const Cfg& target, bool stack_out, 
   reference_out_.clear();
   recompute_target_defs(target.live_outs());
 
+  cout << "RUNNING SANDBOX" << endl;
   sandbox_->run(target);
+  cout << "FINISHED RUNNING" << endl;
   for (auto i = sandbox_->result_begin(), ie = sandbox_->result_end(); i != ie; ++i) {
     reference_out_.push_back(*i);
   }

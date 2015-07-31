@@ -269,24 +269,34 @@ int main(int argc, char** argv) {
   DebugHandler::install_sigsegv();
   DebugHandler::install_sigill();
 
+  cout << 1 << endl;
   SeedGadget seed;
   FunctionsGadget aux_fxns;
   TargetGadget target(aux_fxns, init_arg == Init::ZERO);
 
+  cout << 2 << endl;
   TrainingSetGadget training_set(seed);
   SandboxGadget training_sb(training_set, aux_fxns);
 
+  cout << 3 << endl;
   TransformPoolsGadget transform_pools(target, aux_fxns, seed);
   WeightedTransformGadget transform(transform_pools, seed);
   SearchGadget search(&transform, seed);
 
+  cout << 4 << endl;
   TestSetGadget test_set(seed);
+  cout << 4.1 << endl;
   SandboxGadget test_sb(test_set, aux_fxns);
+  cout << 4.2 << endl;
   CorrectnessCostGadget holdout_fxn(target, &test_sb);
+  cout << 4.3 << endl;
   SolverGadget smt;
+  cout << 4.4 << endl;
   ValidatorGadget validator(smt);
+  cout << 4.5 << endl;
   VerifierGadget verifier(holdout_fxn, validator);
 
+  cout << 5 << endl;
   ScbArg scb_arg {&Console::msg(), nullptr};
   search.set_statistics_callback(scb, &scb_arg)
   .set_statistics_interval(stat_int);
@@ -297,6 +307,7 @@ int main(int argc, char** argv) {
   size_t total_iterations = 0;
   size_t total_restarts = 0;
 
+  cout << 6 << endl;
   // attempt to parse cycle_timeout argument
   vector<string> parts;
   vector<Expr<size_t>*> cycle_timeouts;
@@ -314,6 +325,7 @@ int main(int argc, char** argv) {
     Console::error() << "No verification is performed, thus no counterexample can be added (--failed_verification_action add_counterexample and --strategy none are not compatible)." << endl;
   }
 
+  cout << 7 << endl;
   string final_msg;
   SearchStateGadget state(target, aux_fxns);
   for (size_t i = 0; ; ++i) {

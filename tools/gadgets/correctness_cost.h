@@ -27,13 +27,20 @@ namespace stoke {
 class CorrectnessCostGadget : public CorrectnessCost {
 public:
   CorrectnessCostGadget(const Cfg& target, Sandbox* sb) : CorrectnessCost(sb) {
+    std::cout << "A" << std::endl;
     set_target(target, stack_out_arg, heap_out_arg);
 
+    std::cout << "B" << std::endl;
     set_distance(distance_arg);
+    std::cout << "C" << std::endl;
     set_sse(sse_width_arg, sse_count_arg);
+    std::cout << "D" << std::endl;
     set_relax(!no_relax_reg_arg, relax_mem_arg, blocked_heap_opt_arg);
+    std::cout << "E" << std::endl;
     set_penalty(misalign_penalty_arg, sig_penalty_arg);
+    std::cout << "F" << std::endl;
     set_min_ulp(min_ulp_arg);
+    std::cout << "G" << std::endl;
     set_reduction(reduction_arg);
   }
 };
