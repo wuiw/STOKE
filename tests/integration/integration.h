@@ -274,3 +274,9 @@ TEST_F(IntegrationTest, SearchNonGoal) {
   EXPECT_EQ(0ull, shell("make"));
   EXPECT_EQ(0ull, shell("make clean"));
 }
+
+TEST_F(IntegrationTest, SearchIssue679) {
+  set_working_dir("tests/fixtures/search/issue-679");
+  set_path("../../../../bin");
+  EXPECT_EQ(0ull, shell("make"));
+}
