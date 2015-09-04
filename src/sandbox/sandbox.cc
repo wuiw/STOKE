@@ -46,6 +46,58 @@ void callback_wrapper(StateCallback cb, Code* code, size_t line, CpuState* curre
 namespace stoke {
 
 bool Sandbox::is_supported(Opcode o) {
+
+  // check that the type of each operand is ok
+  // TODO: this could be boiled down to a table lookup, but I don't
+  // think any performance-critical pieces of code depend on this.
+  Instruction instr(o);
+  for(size_t i = 0; i < instr.arity(); ++i) {
+    switch(instr.type(i)) {
+    case Type::HINT:
+    case Type::IMM_8:
+    case Type::IMM_16:
+    case Type::IMM_32:
+    case Type::IMM_64:
+    case Type::ZERO:
+    case Type::ONE:
+    case Type::THREE:
+    case Type::LABEL:
+    case Type::M_8:
+    case Type::M_16:
+    case Type::M_16_INT:
+    case Type::M_32:
+    case Type::M_32_INT:
+    case Type::M_32_FP:
+    case Type::M_64:
+    case Type::M_64_INT:
+    case Type::M_64_FP:
+    case Type::M_128:
+    case Type::M_256:
+    case Type::M_80_BCD:
+    case Type::M_80_FP:
+    case Type::MM:
+    case Type::R_8:
+    case Type::RH:
+    case Type::AL:
+    case Type::CL:
+    case Type::R_16:
+    case Type::AX:
+    case Type::DX:
+    case Type::R_32:
+    case Type::EAX:
+    case Type::R_64:
+    case Type::RAX:
+    case Type::XMM:
+    case Type::XMM_0:
+    case Type::YMM:
+      continue;
+      break;
+    default:
+      return false;
+      break;
+    }
+  }
+
   return unsupported_.find(o) == unsupported_.end();
 }
 
@@ -53,8 +105,6 @@ Sandbox::Sandbox() {
   set_abi_check(true);
   set_stack_check(true);
   set_max_jumps(16);
-  set_count_instructions(false);
-  set_use_latency(false);
 
   harness_ = emit_harness();
   signal_trap_ = emit_signal_trap();
@@ -78,6 +128,8 @@ Sandbox::Sandbox() {
 Sandbox& Sandbox::insert_input(const CpuState& input) {
   io_pairs_.push_back(new IoPair());
   auto io = io_pairs_.back();
+
+  set_label_pool(x64asm::Label("GLOBAL_LABEL_POOL"));
 
   // Use this input as both input AND output
   io->in_ = input;
@@ -112,8 +164,7 @@ Sandbox& Sandbox::insert_function(const Cfg& cfg) {
     fxns_src_[label] = new Cfg(cfg);
     recompile(cfg);
   } else {
-    delete fxns_src_[label];
-    fxns_src_[label] = new Cfg(cfg);
+    *fxns_src_[label] = cfg;
     recompile(cfg);
   }
 
@@ -195,8 +246,6 @@ Sandbox& Sandbox::run(size_t index) {
 
   // Reset error-related variables
   jumps_remaining_ = max_jumps_;
-  // Reset instruction count
-  instruction_count_ = 0;
 
   // Initialize input-specific state that the instrumented function relies on
   // State that doesn't vary on a per-input basis (ie: entrypoint_) is set elsewhere
@@ -223,9 +272,6 @@ Sandbox& Sandbox::run(size_t index) {
   // Finalize output state
   if (abi_check_ && !check_abi(*io)) {
     io->out_.code = ErrorCode::SIGCUSTOM_ABI_VIOLATION;
-  }
-  if (count_instructions_) {
-    io->out_.latency_seen = instruction_count_;
   }
 
   return *this;
@@ -556,10 +602,12 @@ Function Sandbox::emit_map_addr(CpuState& cs) {
   assm_.cmp(rdi, rax);
   assm_.jl_1(heap_case);
 
-  assm_.sub(rdi, rax);
-  assm_.mov((R64)rax, Imm64(cs.stack.size()));
+  assm_.mov((R64)rax, Imm64(cs.stack.upper_bound()));
   assm_.cmp(rdi, rax);
-  assm_.jge_1(fail);
+  assm_.jg_1(heap_case);
+
+  assm_.mov((R64)rax, Imm64(cs.stack.lower_bound()));
+  assm_.sub(rdi, rax);
 
   emit_map_addr_cases(cs, fail, done, 0);
 
@@ -569,10 +617,12 @@ Function Sandbox::emit_map_addr(CpuState& cs) {
   assm_.cmp(rdi, rax);
   assm_.jl_1(data_case);
 
-  assm_.sub(rdi, rax);
-  assm_.mov((R64)rax, Imm64(cs.heap.size()));
+  assm_.mov((R64)rax, Imm64(cs.heap.upper_bound()));
   assm_.cmp(rdi, rax);
-  assm_.jge_1(fail);
+  assm_.jg_1(data_case);
+
+  assm_.mov((R64)rax, Imm64(cs.heap.lower_bound()));
+  assm_.sub(rdi, rax);
 
   emit_map_addr_cases(cs, fail, done, 1);
 
@@ -719,6 +769,10 @@ bool Sandbox::emit_function(const Cfg& cfg, Function* fxn) {
 
   assm_.start(*fxn);
 
+  // Grab the name of this function
+  const auto label = cfg.get_function().get_leading_label();
+  set_label_pool(label);
+
   // The label that begins a function must precede instrumentation .
   // Inter-function calls should target this label.
   assm_.assemble(cfg.get_code()[0]);
@@ -727,8 +781,7 @@ bool Sandbox::emit_function(const Cfg& cfg, Function* fxn) {
   const auto entry = get_label();
   assm_.bind(entry);
 
-  // Grab the name of this function and make a unique label for representing the end
-  const auto label = cfg.get_function().get_leading_label();
+  // Make a unique label for representing the end
   const auto exit = get_label();
 
   // Assemble instructions and add instrumentation for reachable blocks
@@ -736,15 +789,12 @@ bool Sandbox::emit_function(const Cfg& cfg, Function* fxn) {
     if (!cfg.is_reachable(b)) {
       continue;
     }
-    // Emit code for counting the instructions in this block
-    if (count_instructions_) {
-      emit_count_instructions(cfg, b);
-    }
 
     const auto size = cfg.num_instrs(b);
     const auto begin = size == 0 ? 0 : cfg.get_index(Cfg::loc_type(b, 0));
 
     for (auto i = begin, ie = begin + size; i < ie; ++i) {
+      assert(i < cfg.get_code().size());
       // Look up instruction and rip that points beyond this instruction
       const auto& f = cfg.get_function();
       const auto& instr = f.get_code()[i];
@@ -769,6 +819,7 @@ bool Sandbox::emit_function(const Cfg& cfg, Function* fxn) {
   // Restore the STOKE %rsp and return
   emit_load_stoke_rsp();
   assm_.ret();
+
   bool ok = assm_.finish();
   assert(ok);
   return ok;
@@ -906,21 +957,6 @@ void Sandbox::emit_instruction(const Instruction& instr, const Label& fxn, uint6
   default:
     assert(false);
   }
-}
-
-void Sandbox::emit_count_instructions(const Cfg& cfg, Cfg::id_type bb) {
-  size_t count = 0;
-  for (auto i = cfg.instr_begin(bb), ie = cfg.instr_end(bb); i != ie; ++i) {
-    if(i->is_label_defn() || i->is_nop())
-      continue;
-    count++;
-  }
-
-  assm_.mov(Moffs64(&scratch_[rax]), rax);
-  assm_.mov(rax, Moffs64(&instruction_count_));
-  assm_.lea(rax, M64(rax, Imm32(count)));
-  assm_.mov(Moffs64(&instruction_count_), rax);
-  assm_.mov(rax, Moffs64(&scratch_[rax]));
 }
 
 void Sandbox::emit_memory_instruction(const Instruction& instr, uint64_t hex_offset) {

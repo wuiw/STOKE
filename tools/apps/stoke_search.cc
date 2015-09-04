@@ -172,12 +172,12 @@ void show_statistics(const StatisticsCallbackData& data, ostream& os) {
   ofilterstream<Column> ofs(os);
   ofs.filter().padding(5);
 
+  const WeightedTransform* transform = static_cast<const WeightedTransform*>(data.transform);
+
   Statistics total;
-  for (size_t i = 0; i < 6; ++i) {
+  for (size_t i = 0; i < transform->size(); ++i) {
     total += data.move_statistics[i];
   }
-
-  const WeightedTransform* transform = static_cast<const WeightedTransform*>(data.transform);
 
   ofs << "Move Type" << endl;
   ofs << endl;
@@ -269,34 +269,22 @@ int main(int argc, char** argv) {
   DebugHandler::install_sigsegv();
   DebugHandler::install_sigill();
 
-  cout << 1 << endl;
   SeedGadget seed;
   FunctionsGadget aux_fxns;
   TargetGadget target(aux_fxns, init_arg == Init::ZERO);
 
-  cout << 2 << endl;
   TrainingSetGadget training_set(seed);
   SandboxGadget training_sb(training_set, aux_fxns);
 
-  cout << 3 << endl;
   TransformPoolsGadget transform_pools(target, aux_fxns, seed);
   WeightedTransformGadget transform(transform_pools, seed);
   SearchGadget search(&transform, seed);
 
-  cout << 4 << endl;
   TestSetGadget test_set(seed);
-  cout << 4.1 << endl;
   SandboxGadget test_sb(test_set, aux_fxns);
-  cout << 4.2 << endl;
   CorrectnessCostGadget holdout_fxn(target, &test_sb);
-  cout << 4.3 << endl;
-  SolverGadget smt;
-  cout << 4.4 << endl;
-  ValidatorGadget validator(smt);
-  cout << 4.5 << endl;
-  VerifierGadget verifier(holdout_fxn, validator);
+  VerifierGadget verifier(test_sb, holdout_fxn);
 
-  cout << 5 << endl;
   ScbArg scb_arg {&Console::msg(), nullptr};
   search.set_statistics_callback(scb, &scb_arg)
   .set_statistics_interval(stat_int);
@@ -320,7 +308,7 @@ int main(int argc, char** argv) {
     cycle_timeouts.push_back(parser.get());
   }
 
-  if (strategy_arg.value() == Strategy::NONE &&
+  if (strategy_arg.value() == "none" &&
       failed_verification_action.value() == FailedVerificationAction::ADD_COUNTEREXAMPLE) {
     Console::error() << "No verification is performed, thus no counterexample can be added (--failed_verification_action add_counterexample and --strategy none are not compatible)." << endl;
   }
@@ -391,7 +379,7 @@ int main(int argc, char** argv) {
     } else if (!verified) {
       Console::msg() << "Unable to verify new rewrite..." << endl << endl;
     } else {
-      if (strategy_arg.value() == Strategy::NONE) {
+      if (strategy_arg.value() == "none") {
         final_msg = "Search terminated successfully (but no verification was performed)!";
       } else {
         final_msg = "Search terminated successfully with a verified rewrite!";
@@ -401,10 +389,10 @@ int main(int argc, char** argv) {
 
     sep(Console::msg());
 
-    if (!verified && verifier.counter_example_available() && failed_verification_action.value() == FailedVerificationAction::ADD_COUNTEREXAMPLE) {
+    if (!verified && verifier.counter_examples_available() && failed_verification_action.value() == FailedVerificationAction::ADD_COUNTEREXAMPLE) {
       Console::msg() << "Restarting search using new testcase (counterexample from verifier):" << endl << endl;
-      Console::msg() << verifier.get_counter_example() << endl << endl;
-      training_sb.insert_input(verifier.get_counter_example());
+      Console::msg() << verifier.get_counter_examples()[0] << endl << endl;
+      training_sb.insert_input(verifier.get_counter_examples()[0]);
     } else if (total_iterations < timeout_iterations_arg.value()) {
       Console::msg() << "Restarting search:" << endl << endl;
     } else {

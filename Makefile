@@ -60,6 +60,7 @@ SRC_OBJ=\
 	src/cfg/cfg.o \
 	src/cfg/cfg_transforms.o \
 	src/cfg/dot_writer.o \
+	src/cfg/path_enumerator.o \
 	\
 	src/cost/correctness.o \
 	src/cost/cost_parser.o \
@@ -95,10 +96,13 @@ SRC_OBJ=\
 	\
 	src/target/cpu_info.o	\
 	\
+	src/transform/add_nops.o \
+	src/transform/delete.o \
 	src/transform/global_swap.o \
 	src/transform/instruction.o \
 	src/transform/local_swap.o \
 	src/transform/opcode.o \
+	src/transform/opcode_width.o \
 	src/transform/operand.o \
 	src/transform/pools.o \
 	src/transform/rotate.o \
@@ -107,6 +111,7 @@ SRC_OBJ=\
 	src/tunit/tunit.o \
 	\
 	src/validator/handler.o \
+	src/validator/straight_line.o \
 	src/validator/validator.o \
 	\
 	src/validator/handlers/add_handler.o \
@@ -119,7 +124,8 @@ SRC_OBJ=\
 	src/validator/handlers/shift_handler.o \
 	src/validator/handlers/simple_handler.o \
 	\
-	src/verifier/verifier.o
+	src/verifier/hold_out.o
+
 
 TOOL_ARGS_OBJ=\
 	tools/args/benchmark.o \
@@ -146,7 +152,6 @@ TOOL_NON_ARG_OBJ=\
 	tools/io/postprocessing.o \
 	tools/io/solver.o \
 	tools/io/state_diff.o \
-	tools/io/strategy.o \
 	tools/io/failed_verification_action.o
 
 TOOL_OBJ=$(TOOL_ARGS_OBJ) $(TOOL_NON_ARG_OBJ)
@@ -166,6 +171,7 @@ BIN=\
 	bin/stoke_debug_sandbox \
 	bin/stoke_debug_search \
 	bin/stoke_debug_state \
+	bin/stoke_debug_tunit \
 	bin/stoke_debug_verify \
 	\
 	bin/stoke_benchmark_cfg \
@@ -362,8 +368,8 @@ tests/validator/handlers.h: .FORCE
 tests/%.o: tests/%.cc tests/%.h
 	$(CXX) $(TARGET) $(OPT) $(INC) -c $< -o $@ $(TEST_LIBS)
 
-bin/stoke_test: tools/apps/stoke_test.cc $(DEPS) $(SRC_OBJ) $(TEST_OBJ) $(wildcard src/*/*.h) $(wildcard tests/*.h) $(wildcard tests/*/*.h) $(wildcard tests/*/*/*.h) tests/validator/handlers.h
-	$(CXX) $(TARGET) $(OPT) $(INC) $< -o $@ $(SRC_OBJ) $(TEST_OBJ) $(LIB) $(TEST_LIBS)
+bin/stoke_test: tools/apps/stoke_test.cc $(DEPS) $(SRC_OBJ) $(TEST_OBJ) $(TOOL_NON_ARG_OBJ) $(wildcard src/*/*.h) $(wildcard tests/*.h) $(wildcard tests/*/*.h) $(wildcard tests/*/*/*.h) tests/validator/handlers.h
+	$(CXX) $(TARGET) $(OPT) $(INC) $< -o $@ $(SRC_OBJ) $(TEST_OBJ) $(TOOL_NON_ARG_OBJ) $(LIB) $(TEST_LIBS)
 
 ## MISC
 

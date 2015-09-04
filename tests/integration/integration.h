@@ -135,12 +135,13 @@ TEST_F(IntegrationTest, ExamplesParity) {
 
   // Run make extract
   EXPECT_EQ(0ull, shell("make extract"));
+  EXPECT_EQ(0ull, shell("make testcases"));
 
   // In 10 tries, search should succeed at least once...
   size_t good = 0;
   for(size_t i = 0; i < 10; ++i) {
     if(!shell("make search")) {
-      if(wc("examples/parity/result.s") < 20) {
+      if(wc("examples/parity/result.s") <= 40) {
         good++;
         break;
       }
@@ -198,6 +199,13 @@ TEST_F(IntegrationTest, ReplaceIdempotent) {
   ASSERT_EQ(0ull, shell("make clean"));
 }
 
+TEST_F(IntegrationTest, ReplaceFunctions) {
+  set_working_dir("tests/fixtures/replace/functions");
+  set_path("../../../../bin");
+  ASSERT_EQ(0ull, shell("make clean"));
+  ASSERT_EQ(0ull, shell("make"));
+}
+
 TEST_F(IntegrationTest, SandboxFib) {
   set_working_dir("tests/fixtures/sandbox/fib");
   set_path("../../../../bin");
@@ -233,6 +241,13 @@ TEST_F(IntegrationTest, SandboxFunctionCall) {
   EXPECT_EQ(0ull, shell("make clean"));
 }
 
+TEST_F(IntegrationTest, SandboxLbls) {
+  set_working_dir("tests/fixtures/sandbox/lbls");
+  set_path("../../../../bin");
+  EXPECT_EQ(0ull, shell("make"));
+  EXPECT_EQ(0ull, shell("make clean"));
+}
+
 TEST_F(IntegrationTest, SearchCall) {
   set_working_dir("tests/fixtures/search/call");
   set_path("../../../../bin");
@@ -240,10 +255,11 @@ TEST_F(IntegrationTest, SearchCall) {
   EXPECT_EQ(0ull, shell("make clean"));
 }
 
-TEST_F(IntegrationTest, DISABLED_SearchRip) {
+TEST_F(IntegrationTest, SearchRip) {
   set_working_dir("tests/fixtures/search/rip");
   set_path("../../../../bin");
   EXPECT_EQ(0ull, shell("make"));
+  EXPECT_EQ(0ull, shell("./a.out"));
   EXPECT_EQ(0ull, shell("make clean"));
 }
 
