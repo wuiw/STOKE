@@ -120,6 +120,7 @@ SRC_OBJ=\
 	src/validator/ddec.o \
 	src/validator/handler.o \
 	src/validator/invariant.o \
+	src/validator/null.o \
 	src/validator/straight_line.o \
 	src/validator/validator.o \
 	\
@@ -198,10 +199,10 @@ BIN=\
 
 all: release hooks
 
-release: haswell_release
-debug: haswell_debug
-profile: haswell_profile
-test: haswell_test
+release: sandybridge_release
+debug: sandybridge_debug
+profile: sandybridge_profile
+test: sandybridge_test
 
 haswell: haswell_release
 haswell_release:

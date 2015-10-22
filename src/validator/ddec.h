@@ -28,6 +28,8 @@ public:
 
   DdecValidator(SMTSolver& solver) : Validator(solver), bv_(solver) {
     cutpoints_ = NULL;
+    set_try_sign_extend(true);
+    nullspace_file_ = "nullspace_data";
   }
 
   ~DdecValidator() {
@@ -35,11 +37,16 @@ public:
       delete cutpoints_;
   }
 
+  void set_try_sign_extend(bool b) {
+    try_sign_extend_ = b;
+  }
 
   /** Verify if target and rewrite are equivalent. */
   bool verify(const Cfg& target, const Cfg& rewrite);
 
 private:
+
+  std::string nullspace_file_;
 
   /** Find all invariants with CEGAR-style search. */
   std::vector<ConjunctionInvariant*> find_invariants(const Cfg& target, const Cfg& rewrite);
@@ -59,6 +66,8 @@ private:
   void print_summary(const std::vector<ConjunctionInvariant*>&);
 
 
+  /** Should we try to sign-extend values? */
+  bool try_sign_extend_;
 
   /** Bounded Validator */
   BoundedValidator bv_;

@@ -24,6 +24,10 @@
 #include "src/validator/invariants/no_signals.h"
 #include "src/validator/invariants/state_equality.h"
 #include "src/validator/invariants/top_zero.h"
+#include "src/validator/null.h"
+
+#include <iostream>
+#include <fstream>
 
 #include "gmp.h"
 #include "iml.h"
@@ -31,6 +35,7 @@
 using namespace std;
 using namespace stoke;
 using namespace x64asm;
+using namespace BitvectorNullspace;
 
 void DdecValidator::print_summary(const vector<ConjunctionInvariant*>& invariants) {
   cout << endl;
@@ -714,8 +719,10 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
       c.reg = r32s[reg];
       columns.push_back(c);
 
-      c.zero_extend = false;
-      columns.push_back(c);
+      if(try_sign_extend_) {
+        c.zero_extend = false;
+        columns.push_back(c);
+      }
 
     }
   }
@@ -723,9 +730,20 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
   size_t num_columns = columns.size() + 1;
   size_t tc_count = target_states.size();
 
+  ofstream ns;
+  if(nullspace_file_.size()) {
+    ns.open(nullspace_file_, ios::out);
+  }
+  bool ns_ok = ns.is_open();
+
   // Build the nullspace matrix
   cout << "allocating the matrix of size " << tc_count << " x " << num_columns << endl;
-  long* matrix = new long[tc_count*num_columns];
+  uint64_t* matrix = new uint64_t[tc_count*num_columns];
+
+  if(ns_ok) {
+    ns << tc_count << endl << num_columns << endl;
+  }
+
   for (size_t i = 0; i < tc_count; ++i) {
     auto target_state = target_states[i];
     auto rewrite_state = rewrite_states[i];
@@ -747,9 +765,16 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
       }
 
       matrix[i*num_columns + j] = value;
+      if(ns_ok)
+        ns << value << " ";
     }
+    if(ns_ok)
+      ns << endl;
     matrix[i*num_columns + num_columns - 1] = 1;
   }
+
+  if(ns_ok)
+    ns.close();
 
   /*
   for(size_t i = 0; i < tc_count; ++i) {
@@ -760,14 +785,16 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
   }
   */
 
-  mpz_t *mp_result;
+  //mpz_t *mp_result;
+  uint64_t** results = new uint64_t*[num_columns];
   cout << "computing the nullspace" << endl;
-  size_t dim = nullspaceLong(tc_count, num_columns, matrix, &mp_result);
+  size_t dim = nullspace(matrix, tc_count, num_columns, results);
   cout << "nullspace computation complete" << endl;
 
   delete matrix;
 
   // For each row of the nullspace, find the gcd and divide by it.
+  /*
   for (size_t i = 0; i < dim; ++i) {
     mpz_t gcd;
     mpz_init_set(gcd, mp_result[0*dim+i]);
@@ -782,6 +809,7 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
       mpz_set(mp_result[j*dim+i], val);
     }
   }
+  */
 
   // Extract the data from the nullspace
   for (size_t i = 0; i < dim; ++i) {
@@ -790,21 +818,26 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
     EqualityInvariant::CoefficientMap rewrite_map;
     for (size_t j = 0; j < num_columns - 1; ++j) {
       auto column = columns[j];
+      /*
       if (!mpz_fits_slong_p(mp_result[j*dim + i])) {
         ok = false;
         break;
       }
+      */
 
       auto p = pair<R,bool>(column.reg, !column.zero_extend);
+      uint64_t value = results[j][i];
 
       if (column.is_rewrite) {
         //cout << "rewrite " << column.first << endl;
-        rewrite_map[p] = mpz_get_si(mp_result[j*dim + i]);
+        rewrite_map[p] = value;
+        //rewrite_map[p] = mpz_get_si(mp_result[j*dim + i]);
         //cout << "  " << rewrite_map[column.first] << endl;
       } else {
         //cout << "target " << column.first << endl;
         //target_map[column.first] = mpz_to_long(mp_result[j*dim + i]);
-        target_map[p] = mpz_get_si(mp_result[j*dim + i]);
+        target_map[p] = value;
+        //target_map[p] = mpz_get_si(mp_result[j*dim + i]);
         //cout << "  " << target_map[column.first] << endl;
       }
       //gmp_fprintf(stdout, "  %Zd\n", mp_result[j*dim + i]);
@@ -814,7 +847,9 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
     //cout << endl;
 
     if (ok) {
-      auto ei = new EqualityInvariant(target_map, rewrite_map, -mpz_get_si(mp_result[(num_columns-1)*dim + i]));
+      uint64_t constant = results[num_columns-1][i];
+      auto ei = new EqualityInvariant(target_map, rewrite_map, constant);
+      //auto ei = new EqualityInvariant(target_map, rewrite_map, -mpz_get_si(mp_result[(num_columns-1)*dim + i]));
       if (ei->check(target_states, rewrite_states)) {
         conj->add_invariant(ei);
         cout << *ei << endl;
@@ -826,7 +861,12 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
     }
   }
 
-  free(mp_result);
+  for(size_t i = 0; i < num_columns; ++i) {
+    delete results[i];
+  }
+  delete results;
+
+  //free(mp_result);
 
   cout << "Nullspace dimension:" << dec << dim << endl;
   cout << "Column count: " << dec << num_columns << endl;

@@ -33,19 +33,23 @@ public:
   /** You only need to construct an object of this type if you want to 'learn'
    * a path. */
   CfgPaths() {
+    delete_sandbox_ = true;
     sandbox_ = new Sandbox();
     sandbox_->set_abi_check(false);
     sandbox_->set_max_jumps(4096);
   }
 
   ~CfgPaths() {
-    delete sandbox_;
+    if(delete_sandbox_)
+      delete sandbox_;
   }
 
   /** Warning!!!  This sandbox will be reset.  It will be deleted upon reconstruction.
     Use only to override the default sandbox settings.  Use with care. */
   CfgPaths& set_sandbox(Sandbox* sb) {
-    delete sandbox_;
+    if(delete_sandbox_)
+      delete sandbox_;
+    delete_sandbox_ = false;
     sandbox_ = sb;
     return *this;
   }
@@ -74,6 +78,7 @@ public:
 private:
 
   /** Used for path learning. */
+  bool delete_sandbox_;
   Sandbox* sandbox_;
   CfgPath* current_path_;
 

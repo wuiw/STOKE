@@ -58,6 +58,9 @@ bool Cutpoints::get_cutpoints() {
   CfgSccs target_sccs(target_);
   CfgSccs rewrite_sccs(rewrite_);
 
+  Sandbox cfg_path_sandbox(sandbox_);
+  cfg_paths.set_sandbox(&cfg_path_sandbox);
+
   if (target_sccs.count() != rewrite_sccs.count()) {
     error_ = "T/R have different number of SCCs";
     return false;
@@ -160,11 +163,17 @@ bool Cutpoints::get_cutpoints() {
   for(size_t i = 0; i < sandbox_.size(); ++i) {
     auto tc = *sandbox_.get_input(i);
 
+    cout << "Processing TC " << i << " / " << sandbox_.size() << endl;
+
     CfgPath target_path;
     cfg_paths.learn_path(target_path, target_, tc);
 
+    cout << "0";
+
     CfgPath rewrite_path;
     cfg_paths.learn_path(rewrite_path, rewrite_, tc);
+
+    cout << "1";
 
     if(target_path.size() > 16 || rewrite_path.size() > 16)
       continue;
@@ -178,7 +187,6 @@ bool Cutpoints::get_cutpoints() {
     auto last_target_block = target_path[target_path.size() - 1];
     auto last_rewrite_block = rewrite_path[rewrite_path.size() - 1];
 
-    cout << "Processing TC " << i << " / " << sandbox_.size() << endl;
     cout << "  target: " << target_path << endl;
     cout << "  rewrite: " << rewrite_path << endl;
 

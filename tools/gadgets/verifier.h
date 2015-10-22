@@ -105,7 +105,9 @@ private:
 
       return bv;
     } else if (s == "ddec") {
-      return new DdecValidator(*solver_);
+      auto ddec = new DdecValidator(*solver_);
+      ddec->set_try_sign_extend(!no_try_sign_extend_arg.value());
+      return ddec;
     } else if (s == "hold_out") {
       return new HoldOutVerifier(fxn);
     } else if (s == "straight_line" || s == "formal") {
