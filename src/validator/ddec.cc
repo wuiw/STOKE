@@ -700,6 +700,8 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
   // We need a 'constant' column with the value '1'.
   vector<Column> columns;
 
+  cout << "try sign extend: " << try_sign_extend_ << endl;
+
   for (size_t k = 0; k < 2; ++k) {
     auto def_ins = k ? rewrite_regs : target_regs;
     for (auto r = def_ins.gp_begin(); r != def_ins.gp_end(); ++r) {
@@ -768,9 +770,9 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
       if(ns_ok)
         ns << value << " ";
     }
-    if(ns_ok)
-      ns << endl;
     matrix[i*num_columns + num_columns - 1] = 1;
+    if(ns_ok)
+      ns << 1 << endl;
   }
 
   if(ns_ok)
@@ -789,7 +791,7 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
   uint64_t** results = new uint64_t*[num_columns];
   cout << "computing the nullspace" << endl;
   size_t dim = nullspace(matrix, tc_count, num_columns, results);
-  cout << "nullspace computation complete" << endl;
+  cout << "nullspace computation complete " << dim << endl;
 
   delete matrix;
 
@@ -826,7 +828,7 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
       */
 
       auto p = pair<R,bool>(column.reg, !column.zero_extend);
-      uint64_t value = results[j][i];
+      uint64_t value = results[i][j];
 
       if (column.is_rewrite) {
         //cout << "rewrite " << column.first << endl;
@@ -846,25 +848,26 @@ ConjunctionInvariant* DdecValidator::learn_simple_invariant(x64asm::RegSet targe
     //gmp_fprintf(stdout , "  %Zd\n", mp_result[(num_columns-1)*dim + i]);
     //cout << endl;
 
-    if (ok) {
-      uint64_t constant = results[num_columns-1][i];
-      auto ei = new EqualityInvariant(target_map, rewrite_map, constant);
-      //auto ei = new EqualityInvariant(target_map, rewrite_map, -mpz_get_si(mp_result[(num_columns-1)*dim + i]));
-      if (ei->check(target_states, rewrite_states)) {
-        conj->add_invariant(ei);
-        cout << *ei << endl;
-      } else {
-        cout << "GOT BAD INVARIANT " << *ei << endl;
-      }
-    } else {
-      cout << "(bad)" << endl;
-    }
-  }
+    uint64_t constant = results[i][num_columns-1];
+    auto ei = new EqualityInvariant(target_map, rewrite_map, constant);
+    //auto ei = new EqualityInvariant(target_map, rewrite_map, -mpz_get_si(mp_result[(num_columns-1)*dim + i]));
+    if (ei->check(target_states, rewrite_states)) {
+      conj->add_invariant(ei);
+      cout << *ei << endl;
+    }/* else {
+      cout << "GOT BAD INVARIANT " << *ei << endl;
+    }*/
 
+    delete results[i];
+  }
+  delete results;
+
+/*
   for(size_t i = 0; i < num_columns; ++i) {
     delete results[i];
   }
   delete results;
+  */
 
   //free(mp_result);
 
