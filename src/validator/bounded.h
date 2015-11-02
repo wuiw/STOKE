@@ -35,6 +35,7 @@ public:
 
   enum AliasStrategy {
     BASIC,            // enumerate all cases, attempt to bound it (SOUND)
+    BASIC_NO_OVERLAP, // enumerate all cases, attempt to bound, don't allow partial overlap (UNSOUND)
     STRING,           // look for continugous memory accesses and combine them (SOUND)
     STRING_NO_ALIAS   // assume strings don't overlap (UNSOUND)
   };
@@ -177,6 +178,9 @@ private:
     std::vector<OverlapDescriptor*>& start,
     std::vector<OverlapDescriptor>& available_cells, size_t max_size);
 
+
+  /** Count the total number of aliasing cases we find. */
+  size_t total_cases_;
 };
 
 

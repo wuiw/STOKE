@@ -1056,6 +1056,8 @@ bool BoundedValidator::verify_pair(const Cfg& target, const Cfg& rewrite, const 
 
   BOUNDED_DEBUG(cout << memory_list.size() << " Aliasing cases.  Yay." << endl;);
 
+  total_cases_ += memory_list.size();
+
   for (auto memories : memory_list) {
     BOUNDED_DEBUG(cout << "------ NEXT ALIASING CASE -----" << endl;)
     BOUNDED_DEBUG(
@@ -1175,6 +1177,7 @@ bool BoundedValidator::verify(const Cfg& init_target, const Cfg& init_rewrite) {
   paths_[false].clear();
   paths_[true].clear();
   has_error_ = false;
+  total_cases_ = 0;
   init_mm();
 
   auto target = inline_functions(init_target);
@@ -1218,12 +1221,14 @@ bool BoundedValidator::verify(const Cfg& init_target, const Cfg& init_rewrite) {
         // Case 2: verify failed and no counterexampe: keep going
         // Case 3: verify worked: keep going
 
-        if (!ok && counterexamples_.size() > 0)
-          break;
+        /*if (!ok && counterexamples_.size() > 0)
+          break;*/
       }
-      if (!ok && counterexamples_.size() > 0)
-        break;
+      /*if (!ok && counterexamples_.size() > 0)
+        break;*/
     }
+
+    cout << "Total cases: " << total_cases_;
 
     reset_mm();
     return ok;
